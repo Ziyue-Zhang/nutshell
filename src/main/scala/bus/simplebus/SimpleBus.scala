@@ -46,7 +46,7 @@ object SimpleBusCmd {
   def apply() = UInt(4.W)
 }
 
-class SimpleBusReqBundle(val userBits: Int = 0, val addrBits: Int = 32, val idBits: Int = 0) extends SimpleBusBundle {
+class SimpleBusReqBundle(val userBits: Int = 0, val addrBits: Int = 64, val idBits: Int = 0) extends SimpleBusBundle {
   val addr = Output(UInt(addrBits.W))
   val size = Output(UInt(3.W))
   val cmd = Output(SimpleBusCmd())

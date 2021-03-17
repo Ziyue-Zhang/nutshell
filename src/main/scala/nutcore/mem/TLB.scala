@@ -32,10 +32,12 @@ sealed trait Sv39Const extends HasNutCoreParameter{
   val ppn1Len = 9
   val ppn2Len = PAddrBits - offLen - ppn0Len - ppn1Len // 2
   val ppnLen = ppn2Len + ppn1Len + ppn0Len
+  val vpn4Len = 9
+  val vpn3Len = 9
   val vpn2Len = 9
   val vpn1Len = 9
   val vpn0Len = 9
-  val vpnLen = vpn2Len + vpn1Len + vpn0Len
+  val vpnLen = vpn4Len + vpn3Len + vpn2Len + vpn1Len + vpn0Len
   
   //val paddrLen = PAddrBits
   //val vaddrLen = VAddrBits
@@ -51,6 +53,8 @@ sealed trait Sv39Const extends HasNutCoreParameter{
   val pteResLen = XLEN - ppnLen - 2 - flagLen
 
   def vaBundle = new Bundle {
+    val vpn4 = UInt(vpn4Len.W)
+    val vpn3 = UInt(vpn3Len.W)
     val vpn2 = UInt(vpn2Len.W)
     val vpn1 = UInt(vpn1Len.W)
     val vpn0 = UInt(vpn0Len.W)
@@ -68,6 +72,8 @@ sealed trait Sv39Const extends HasNutCoreParameter{
   }
 
   def vpnBundle = new Bundle {
+    val vpn4 = UInt(vpn4Len.W)
+    val vpn3 = UInt(vpn3Len.W)
     val vpn2 = UInt(vpn2Len.W)
     val vpn1 = UInt(vpn1Len.W)
     val vpn0 = UInt(vpn0Len.W)
