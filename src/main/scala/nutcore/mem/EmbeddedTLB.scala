@@ -99,7 +99,9 @@ class EmbeddedTLB(implicit val tlbConfig: TLBConfig) extends TlbModule{
   mdTLB.reset := reset.asBool || flushTLB
 
   // VM enable && io
-  val vmEnable = satp.asTypeOf(satpBundle).mode === 8.U && (io.csrMMU.priviledgeMode < ModeM)
+  //val vmEnable = satp.asTypeOf(satpBundle).mode === 8.U && (io.csrMMU.priviledgeMode < ModeM)
+  //val vmEnable = satp.asTypeOf(satpBundle).mode === 8.U
+  val vmEnable = satp.asTypeOf(satpBundle).mode === 8.U || satp.asTypeOf(satpBundle).mode === 0.U
 
   def PipelineConnectTLB[T <: Data](left: DecoupledIO[T], right: DecoupledIO[T], update: Bool, rightOutFire: Bool, isFlush: Bool, vmEnable: Bool) = {
     val valid = RegInit(false.B)
@@ -274,7 +276,8 @@ class EmbeddedTLBExec(implicit val tlbConfig: TLBConfig) extends TlbModule{
         alreadyOutFire := false.B
       }.elsewhen (miss && !ioFlush) {
         state := s_memReadReq
-        raddr := paddrApply(satp.ppn, vpn.vpn2) //
+        raddr := paddrApply(satp.ppn, vpn.vpn4) //
+         //printf("ppn %x\n",satp.ppn)
         level := Level.U
         needFlush := false.B
         alreadyOutFire := false.B
@@ -294,7 +297,7 @@ class EmbeddedTLBExec(implicit val tlbConfig: TLBConfig) extends TlbModule{
         when (isFlush) {
           state := s_idle
           needFlush := false.B
-        }.elsewhen (!(missflag.r || missflag.x) && (level===3.U || level===2.U)) {
+        }.elsewhen (!(missflag.r || missflag.x) && (level === 5.U || level===4.U || level===3.U || level===2.U)) {
           when(!missflag.v || (!missflag.r && missflag.w)) { //TODO: fix needflush
             if(tlbname == "itlb") { state := s_wait_resp } else { state := s_miss_slpf }
             if(tlbname == "itlb") { missIPF := true.B }
@@ -308,7 +311,9 @@ class EmbeddedTLBExec(implicit val tlbConfig: TLBConfig) extends TlbModule{
             Debug(false, "\n")
           }.otherwise {
             state := s_memReadReq
-            raddr := paddrApply(memRdata.ppn, Mux(level === 3.U, vpn.vpn1, vpn.vpn0))
+            //raddr := paddrApply(memRdata.ppn, Mux(level === 3.U, vpn.vpn1, vpn.vpn0))
+            //printf("ppn %x\n",memRdata.ppn)
+            raddr := paddrApply(memRdata.ppn, Mux(level === 5.U, vpn.vpn3, Mux(level === 4.U, vpn.vpn2, Mux(level === 3.U, vpn.vpn1, vpn.vpn0))))
           }
         }.elsewhen (level =/= 0.U) { //TODO: fix needFlush
           val permCheck = missflag.v && !(pf.priviledgeMode === ModeU && !missflag.u) && !(pf.priviledgeMode === ModeS && missflag.u && (!pf.status_sum || ifecth))
@@ -336,9 +341,11 @@ class EmbeddedTLBExec(implicit val tlbConfig: TLBConfig) extends TlbModule{
               missMetaRefill := true.B
             }
           }
-          missMask := Mux(level===3.U, 0.U(maskLen.W), Mux(level===2.U, "h3fe00".U(maskLen.W), "h3ffff".U(maskLen.W)))
+          //missMask := Mux(level===3.U, 0.U(maskLen.W), Mux(level===2.U, "h3fe00".U(maskLen.W), "h3ffff".U(maskLen.W)))
+          missMask := Mux(level===5.U, 0.U(maskLen.W), Mux(level===4.U, "hffff8000000".U(maskLen.W), Mux(level===3.U, "hffffffc0000".U(maskLen.W), Mux(level===2.U, "hffffffffe00".U(maskLen.W), "hfffffffffff".U(maskLen.W)))))
           missMaskStore := missMask
         }
+        //printf("level:%d\n",level)
         level := level - 1.U
       }
     }
