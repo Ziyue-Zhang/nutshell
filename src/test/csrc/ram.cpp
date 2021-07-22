@@ -91,6 +91,8 @@ void addpageSv57() {
 #define PTEADDR(i) (0x88000000 - (PAGESIZE * PTENUM) + (PAGESIZE * i)) //0x88000000 - 0x100*64
 #define PTEMMIONUM 128
 #define PDEMMIONUM 1
+#define PTEDEVNUM 128
+#define PDEDEVNUM 1
 
   uint64_t pdddde[ENTRYNUM];
   uint64_t pddde[ENTRYNUM];
@@ -102,10 +104,27 @@ void addpageSv57() {
   uint64_t pdemmio[ENTRYNUM];
   uint64_t ptemmio[PTEMMIONUM][ENTRYNUM];
   
-  pdde[1] = (((PDDEADDR-PAGESIZE*1) & 0xfffff000) >> 2) | 0x1;
+  // special addr for internal devices 0x30000000-0x3fffffff
+  uint64_t pdedev[ENTRYNUM];
+  uint64_t ptedev[PTEDEVNUM][ENTRYNUM];
+
+  // dev: 0x30000000-0x3fffffff
+  pdde[0] = (((PDDDDEADDR-PAGESIZE*(PDEMMIONUM+PTEMMIONUM+PDEDEVNUM)) & 0xfffff000) >> 2) | 0x1;
+
+  for (int i = 0; i < PTEDEVNUM; i++) {
+    pdedev[ENTRYNUM-PTEDEVNUM+i] = (((PDDDDEADDR-PAGESIZE*(PDEMMIONUM+PTEMMIONUM+PDEDEVNUM+PTEDEVNUM-i)) & 0xfffff000) >> 2) | 0x1;
+  }
+
+  for(int outidx = 0; outidx < PTEDEVNUM; outidx++) {
+    for(int inidx = 0; inidx < ENTRYNUM; inidx++) {
+      ptedev[outidx][inidx] = (((0x30000000 + outidx*PTEVOLUME + inidx*PAGESIZE) & 0xfffff000) >> 2) | 0xf;
+    }
+  }
+
+  pdde[1] = (((PDDDDEADDR-PAGESIZE*1) & 0xfffff000) >> 2) | 0x1;
 
   for(int i = 0; i < PTEMMIONUM; i++) {
-    pdemmio[i] = (((PDDEADDR-PAGESIZE*(PTEMMIONUM+PDEMMIONUM-i)) & 0xfffff000) >> 2) | 0x1;
+    pdemmio[i] = (((PDDDDEADDR-PAGESIZE*(PTEMMIONUM+PDEMMIONUM-i)) & 0xfffff000) >> 2) | 0x1;
   }
   
   for(int outidx = 0; outidx < PTEMMIONUM; outidx++) {
@@ -134,6 +153,8 @@ void addpageSv57() {
     }
   }
 
+  memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM+PDEMMIONUM+PTEMMIONUM+PDEDEVNUM+PTEDEVNUM)),ptedev,PAGESIZE*PTEDEVNUM);
+  memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM+PDEMMIONUM+PTEMMIONUM+PDEDEVNUM)),pdedev,PAGESIZE*PDEDEVNUM);
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM+PDEMMIONUM+PTEMMIONUM)),ptemmio, PAGESIZE*PTEMMIONUM);
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM+PDEMMIONUM)), pdemmio, PAGESIZE*PDEMMIONUM);
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM)), pdddde, PAGESIZE*PDDENUM);
@@ -141,7 +162,7 @@ void addpageSv57() {
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDDENUM+PDENUM)), pdde, PAGESIZE*PDDENUM);
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*(PTENUM+PDENUM)), pde, PAGESIZE*PDENUM);
   memcpy((char *)ram+(RAMSIZE-PAGESIZE*PTENUM), pte, PAGESIZE*PTENUM);
-  printf("ram:%x\n",(ram[0x7fbc000/sizeof(paddr_t)])<<2);
+  //printf("ram:%x\n",(ram[0x7fbc000/sizeof(paddr_t)])<<2);
 }
 
 void init_ram(const char *img) {
@@ -171,7 +192,8 @@ void init_ram(const char *img) {
 extern "C" void ram_helper(
     paddr_t rIdx, paddr_t *rdata, paddr_t wIdx, paddr_t wdata, paddr_t wmask, uint8_t wen) {
   *rdata = ram[rIdx];
-  //printf("ridx:%x\n",rIdx);
+
+ // printf("ridx:%x\n",rIdx);
   if(rIdx >= (RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM))/sizeof(paddr_t)){
     //printf("%x\n",RAMSIZE-PAGESIZE*(PTENUM+PDDDDENUM+PDDDENUM+PDDENUM+PDENUM));
     //printf("%x\n",RAMSIZE-PAGESIZE*(PTENUM+PDDDENUM+PDDENUM+PDENUM));
